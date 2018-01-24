@@ -35,10 +35,10 @@ namespace LinqKit
 
         internal IQueryable<T> InnerQuery { get { return _inner; } }			// Original query, that we're wrapping
 
-        internal ExpandableQuery(IQueryable<T> inner)
+        internal ExpandableQuery(IQueryable<T> inner, Func<Expression, Expression> optimizer)
         {
             _inner = inner;
-            _provider = new ExpandableQueryProvider<T>(this);
+            _provider = new ExpandableQueryProvider<T>(this, optimizer);
         }
 
         Expression IQueryable.Expression { get { return _inner.Expression; } }
@@ -113,10 +113,12 @@ namespace LinqKit
 #endif
     {
         readonly ExpandableQuery<T> _query;
+        readonly Func<Expression, Expression> _optimizer;
 
-        internal ExpandableQueryProvider(ExpandableQuery<T> query)
+        internal ExpandableQueryProvider(ExpandableQuery<T> query, Func<Expression, Expression> optimizer)
         {
             _query = query;
+            _optimizer = optimizer ?? LinqKitExtension.NoOpQueryOptimizer;
         }
 
         // The following four methods first call ExpressionExpander to visit the expression tree, then call
@@ -136,14 +138,14 @@ namespace LinqKit
         TResult IQueryProvider.Execute<TResult>(Expression expression)
         {
             var expanded = expression.Expand();
-            var optimized = LinqKitExtension.QueryOptimizer(expanded);
+            var optimized = _optimizer(expanded);
             return _query.InnerQuery.Provider.Execute<TResult>(optimized);
         }
 
         object IQueryProvider.Execute(Expression expression)
         {
             var expanded = expression.Expand();
-            var optimized = LinqKitExtension.QueryOptimizer(expanded);
+            var optimized = _optimizer(expanded);
             return _query.InnerQuery.Provider.Execute(optimized);
         }
 

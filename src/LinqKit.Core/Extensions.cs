@@ -10,15 +10,22 @@ namespace LinqKit
     /// http://tomasp.net/blog/linq-expand.aspx for more information.</summary>
     public static class Extensions
     {
-        /// <summary> LinqKit: Returns wrapper that automatically expands expressions </summary>
+        /// <summary> LinqKit: Returns wrapper that automatically expands expressions using the default QueryOptimizer (if set)</summary>
         public static IQueryable<T> AsExpandable<T>(this IQueryable<T> query)
         {
             if (query is ExpandableQuery<T>) return query;
 #if !(NET35 || NOEF)
             return ExpandableQueryFactory<T>.Create(query);
 #else
-            return new ExpandableQuery<T>(query);
+            return new ExpandableQuery<T>(query, LinqKitExtension.QueryOptimizer);
 #endif
+        }
+
+        /// <summary> LinqKit: Returns wrapper that automatically expands expressions using the given QueryOptimizer (null means NO optimizer)</summary>
+        public static IQueryable<T> AsExpandable<T>(this IQueryable<T> query, Func<Expression, Expression> forcedOptimizer)
+        {
+            if (query is ExpandableQuery<T>) throw new InvalidOperationException("Cannot change optimizer!");
+            return new ExpandableQuery<T>(query, forcedOptimizer);
         }
 
         /// <summary> LinqKit: Expands expression </summary>
